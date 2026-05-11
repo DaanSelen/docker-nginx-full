@@ -4,6 +4,10 @@ updates:
     directory: "/docker"
     schedule:
       interval: "weekly"
+    groups:
+      docker-deps:
+        patterns:
+          - "*"
 
 #  - package-ecosystem: "github-actions"
 #    directory: "/"
