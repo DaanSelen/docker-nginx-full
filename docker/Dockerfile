@@ -4,9 +4,9 @@
 
 FROM debian:trixie-slim AS nginxbuilder
 
-ARG OPENRESTY_VERSION=1.29.2.3
-ARG LUA_VERSION=5.5.0
-ARG LUAROCKS_VERSION=3.13.0
+ARG OPENRESTY_VERSION
+ARG LUA_VERSION
+ARG LUAROCKS_VERSION
 
 RUN apt-get update \
 	&& apt-get install -y \
@@ -82,8 +82,8 @@ COPY ./scripts/install-openresty /tmp/install-openresty
 # Copy crowdsec openresty bouncer install script
 COPY ./scripts/install-crowdsec_openresty_bouncer /tmp/install-crowdsec_openresty_bouncer
 
-ARG OPENRESTY_VERSION=1.29.2.3
-ARG CROWDSEC_OPENRESTY_BOUNCER_VERSION=1.7.7
+ARG OPENRESTY_VERSION
+ARG CROWDSEC_OPENRESTY_BOUNCER_VERSION
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
 	OPENRESTY_VERSION=${OPENRESTY_VERSION} \
 	CROWDSEC_OPENRESTY_BOUNCER_VERSION=${CROWDSEC_OPENRESTY_BOUNCER_VERSION}
