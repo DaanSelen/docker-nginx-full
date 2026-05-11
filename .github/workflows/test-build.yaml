@@ -4,7 +4,7 @@ name: Test Docker Build
   "workflow_dispatch":
   push:
     branches:
-      - 'main'
+      - 'master'
     tags:
       - '*'
 
