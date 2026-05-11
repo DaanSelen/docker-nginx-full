@@ -2,18 +2,18 @@
 # Nginx Builder
 #############
 
-FROM debian:bookworm-slim AS nginxbuilder
+FROM debian:trixie-slim AS nginxbuilder
 
-ARG OPENRESTY_VERSION
-ARG LUA_VERSION
-ARG LUAROCKS_VERSION
+ARG OPENRESTY_VERSION=1.29.2.3
+ARG LUA_VERSION=5.5.0
+ARG LUAROCKS_VERSION=3.13.0
 
 RUN apt-get update \
 	&& apt-get install -y \
 	build-essential \
 	ca-certificates \
 	libncurses-dev \
-	libpcre3-dev \
+	libpcre2-dev \
 	libreadline-dev \
 	libssl-dev \
 	openssl unzip \
@@ -34,13 +34,14 @@ RUN /tmp/build-openresty
 # Final Image
 #############
 
-FROM debian:bookworm-slim AS final
+FROM debian:trixie-slim AS final
 LABEL maintainer="Jamie Curnow <jc@jc21.com>"
+LABEL maintainer="Daan Selen <dselen@nerthus.nl>"
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ARG TARGETPLATFORM
-RUN echo "Base: debian:bookworm-slim, ${TARGETPLATFORM:-linux/amd64}" > /built-for-arch
+RUN echo "Base: debian:trixie-slim, ${TARGETPLATFORM:-linux/amd64}" > /built-for-arch
 
 # OpenResty uses LuaJIT which has a dependency on GCC
 RUN apt-get update \
@@ -51,7 +52,7 @@ RUN apt-get update \
 	figlet \
 	jq \
 	libncurses6 \
-	libpcre3 \
+	libpcre2-8-0 \
 	libreadline8 \
 	openssl \
 	perl \
@@ -81,8 +82,8 @@ COPY ./scripts/install-openresty /tmp/install-openresty
 # Copy crowdsec openresty bouncer install script
 COPY ./scripts/install-crowdsec_openresty_bouncer /tmp/install-crowdsec_openresty_bouncer
 
-ARG OPENRESTY_VERSION
-ARG CROWDSEC_OPENRESTY_BOUNCER_VERSION
+ARG OPENRESTY_VERSION=1.29.2.3
+ARG CROWDSEC_OPENRESTY_BOUNCER_VERSION=1.7.7
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
 	OPENRESTY_VERSION=${OPENRESTY_VERSION} \
 	CROWDSEC_OPENRESTY_BOUNCER_VERSION=${CROWDSEC_OPENRESTY_BOUNCER_VERSION}
