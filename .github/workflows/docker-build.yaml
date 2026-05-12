@@ -1,0 +1,161 @@
+name: Docker Building Pipeline
+
+"on":
+  "workflow_dispatch":
+  push:
+    branches:
+      - 'master'
+    tags:
+      - '*'
+
+env:
+  REGISTRY: "ghcr.io"
+  IMAGE_NAME: nginx-full
+  PLATFORMS: linux/amd64,linux/arm64
+
+  OPENRESTY_VERSION: 1.29.2.3
+  CROWDSEC_OPENRESTY_BOUNCER_VERSION: 1.7.7
+  LUA_VERSION: 5.5.0
+  LUAROCKS_VERSION: 3.13.0
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      base_image: ${{ steps.vars.outputs.base_image }}
+      acmesh_image: ${{ steps.vars.outputs.acmesh_image }}
+      certbot_image: ${{ steps.vars.outputs.certbot_image }}
+      certbot_node_image: ${{ steps.vars.outputs.certbot_node_image }}
+      acmesh_golang_image: ${{ steps.vars.outputs.acmesh_golang_image }}
+
+    steps:
+      - id: vars
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          REPO="${{ env.REGISTRY }}/${OWNER}/${{ env.IMAGE_NAME }}"
+
+          echo "base_image=${REPO}:latest" >> $GITHUB_OUTPUT
+          echo "certbot_image=${REPO}:certbot" >> $GITHUB_OUTPUT
+          echo "certbot_node_image=${REPO}:certbot-node" >> $GITHUB_OUTPUT
+          echo "acmesh_image=${REPO}:acmesh" >> $GITHUB_OUTPUT
+          echo "acmesh_golang_image=${REPO}:acmesh-golang" >> $GITHUB_OUTPUT
+
+  build-latest-base:
+    runs-on: ubuntu-latest
+    needs: setup
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: ${{ env.PLATFORMS }}
+      - uses: docker/setup-buildx-action@v3
+
+      - name: log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: ${{ env.PLATFORMS }}
+          pull: true
+          push: true
+          tags: ${{ needs.setup.outputs.base_image }}
+          build-args: |
+            OPENRESTY_VERSION=${{ env.OPENRESTY_VERSION }}
+            CROWDSEC_OPENRESTY_BOUNCER_VERSION=${{ env.CROWDSEC_OPENRESTY_BOUNCER_VERSION }}
+            LUA_VERSION=${{ env.LUA_VERSION }}
+            LUAROCKS_VERSION=${{ env.LUAROCKS_VERSION }}
+
+  build-certbot:
+    runs-on: ubuntu-latest
+    needs: build-latest-base
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: ${{ env.PLATFORMS }}
+      - uses: docker/setup-buildx-action@v3
+
+      - name: log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.certbot
+          platforms: ${{ env.PLATFORMS }}
+          pull: true
+          push: true
+          tags: ${{ needs.setup.outputs.certbot_image }}
+          build-args: |
+            BASE_IMAGE=${{ needs.setup.outputs.base_image }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.certbot-node
+          platforms: ${{ env.PLATFORMS }}
+          pull: true
+          push: true
+          tags: ${{ needs.setup.outputs.certbot_node_image }}
+          build-args: |
+            CERTBOT_IMAGE=${{ needs.setup.outputs.certbot_image }}          
+
+  build-acmesh:
+    runs-on: ubuntu-latest
+    needs: build-latest-base
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: ${{ env.PLATFORMS }}
+      - uses: docker/setup-buildx-action@v3
+
+      - name: log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.acmesh
+          platforms: ${{ env.PLATFORMS }}
+          pull: true
+          push: true
+          tags: ${{ needs.setup.outputs.acmesh_image }}
+          build-args: |
+            BASE_IMAGE=${{ needs.setup.outputs.base_image }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.acmesh-golang
+          platforms: ${{ env.PLATFORMS }}
+          pull: true
+          push: true
+          tags: ${{ needs.setup.outputs.acmesh_golang_image }}
+          build-args: |
+            ACMESH_IMAGE=${{ needs.setup.outputs.acmesh_image }}
+            
